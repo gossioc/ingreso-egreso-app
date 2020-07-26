@@ -7,8 +7,8 @@ import { AngularFirestore } from '@angular/fire/firestore';
 import { Store } from '@ngrx/store';
 import { AppState } from '../app.reducer';
 import * as authActions from '../auth/auth.actions';
-import { CompileShallowModuleMetadata } from '@angular/compiler';
 import { Subscription } from 'rxjs';
+import * as ingresoEgresoActions from '../ingreso-egreso/ingreso-egreso.actions';
 
 @Injectable({
   providedIn: 'root'
@@ -16,9 +16,14 @@ import { Subscription } from 'rxjs';
 export class AuthService {
 
   userSubscription: Subscription;
+  private _user: Usuario;
+
+  get user(){
+    return this._user;
+  }
 
   constructor( public auth: AngularFireAuth,
-               public firestore: AngularFirestore,
+               private firestore: AngularFirestore,
                private store: Store<AppState> ) { }
 
   initAuthListener(){
@@ -26,17 +31,18 @@ export class AuthService {
       if ( fuser ) {
         this.userSubscription = this.firestore.doc(`${ fuser.uid }/usuario`).valueChanges()
           .subscribe( ( firestoreUser: any ) => {
-            console.log( firestoreUser );
             const user = Usuario.fromFirebase( firestoreUser );
-            
+            this._user = user;
             this.store.dispatch( authActions.setUser({ user }) );
-          } )      
+          })      
       } else {
-        this.userSubscription.unsubscribe();
+        this._user = null;
+        if ( this.userSubscription ) {
+          this.userSubscription.unsubscribe();
+        }     
         this.store.dispatch( authActions.unSetUser() );
-      }
-
-    
+        this.store.dispatch( ingresoEgresoActions.unSetItems() )
+      }  
       
     });
   }
